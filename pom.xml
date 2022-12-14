@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.example</groupId>
+    <artifactId>elap-validator-resources</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>xml-maven-plugin</artifactId>
+                    <version>1.0.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.helger.maven</groupId>
+                    <artifactId>ph-schematron-maven-plugin</artifactId>
+                    <version>6.3.4</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>xml-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>transform</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>transform</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <transformationSets>
+                        <transformationSet>
+                            <dir>src/main/resources/sat</dir>
+                            <stylesheet>src/main/resources/generation/sat_to_sch_transformation.xslt</stylesheet>
+                            <outputProperties>
+                                <outputProperty>
+                                    <name>omit-xml-declaration</name>
+                                    <value>yes</value>
+                                </outputProperty>
+                            </outputProperties>
+                            <fileMappers>
+                                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                                    <targetExtension>.sch</targetExtension>
+                                </fileMapper>
+                            </fileMappers>
+                        </transformationSet>
+                    </transformationSets>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.sf.saxon</groupId>
+                        <artifactId>Saxon-HE</artifactId>
+                        <version>11.4</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>com.helger.maven</groupId>
+                <artifactId>ph-schematron-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>convert</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>convert</goal>
+                        </goals>
+                        <configuration>
+                            <schematronDirectory>${project.basedir}/src/main/resources/sch</schematronDirectory>
+                            <schematronPattern>**/*_master.sch</schematronPattern>
+                            <xsltDirectory>${project.build.directory}/generated-resources/xslt</xsltDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <!--
+                            This plugin execution is not necessary to produce the validator's artefacts but
+                            is very useful during development to quickly validate rule modifications or different
+                            sample inputs without going through the full validator.
+                        -->
+                        <id>validate</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>validate</goal>
+                        </goals>
+                        <configuration>
+                            <svrlDirectory>${project.build.directory}/svrl</svrlDirectory>
+                            <schematronProcessingEngine>xslt</schematronProcessingEngine>
+                            <!-- Adapt this if you want to use another XSLT file. -->
+                            <schematronFile>${project.basedir}/validator/latest/sch/solution_master.xslt</schematronFile>
+                            <!-- Adapt these two properties if you want to point to a different set of XMLs to validate. -->
+                            <xmlDirectory>src/test/resources</xmlDirectory>
+                            <xmlIncludes>**/ELAP valid solution.xml</xmlIncludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copyArtifacts</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/validator/latest/sch</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/generated-resources/xslt</directory>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/resources/sat</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
