@@ -13,11 +13,11 @@
     <sch:let name="satDoc" value="document('ELAP_sat.xml')"/>
     <sch:let name="satView" value="$satDoc/a:model/a:views/a:diagrams/a:view[a:name = 'Architecture Principles viewpoint']"/>
     <sch:let name="satPrinciples" value="$satDoc/a:model/a:elements/a:element[
-  let $elementIdentifier := @identifier return (
-     $satView//a:node[@elementRef = $elementIdentifier]
-     and starts-with(./a:name, '&lt;&lt;ELAP:Architecture Principle&gt;&gt;')
-  )
-]"/>
+      let $elementIdentifier := @identifier return (
+         $satView//a:node[@elementRef = $elementIdentifier]
+         and starts-with(./a:name, '&lt;&lt;ELAP:Architecture Principle&gt;&gt;')
+      )
+    ]"/>
 
     <xsl:function name="local:inElementSet" as="xs:boolean">
         <xsl:param name="elementIdentifier"/>
@@ -34,7 +34,8 @@
     <xsl:function name="local:isRealisedByInteroperabilitySpecification" as="xs:boolean">
         <xsl:param name="element"/>
         <xsl:variable name="ancestors" select="local:findAncestorElements($element, $root/..)"/>
-        <xsl:sequence select="exists($ancestors[
+        <xsl:variable name="result" select="
+        exists($ancestors[
             let $elementIdentifier := @identifier return (
                 $root/a:model/a:relationships/a:relationship[
                     @target = $elementIdentifier
@@ -47,25 +48,16 @@
                     ))
                 ]
             )
-        ])"/>
+        ])
+        "/>
+<!--        <xsl:message>isRealisedByInteroperabilitySpecification [<xsl:value-of select="$element/a:name"/>] [<xsl:value-of select="$result"/>]</xsl:message>-->
+        <xsl:sequence select="$result"/>
     </xsl:function>
 
     <xsl:function name="local:findAllRelatedElements" as="element()*">
         <xsl:param name="element"/>
         <xsl:param name="checkedElements"/>
         <xsl:variable name="elementIdentifier" select="$element/@identifier"/>
-        <xsl:variable name="foundElements" select="
-     $root/a:model/a:elements/a:element[
-        not(local:inElementSet(@identifier, $checkedElements)) and (
-           let $otherElementIdentifier := @identifier return (
-              $root/a:model/a:relationships/a:relationship[
-                 ($elementIdentifier = @target and $otherElementIdentifier = @source)
-                 or ($elementIdentifier = @source and $otherElementIdentifier = @target)
-              ]
-           )
-        )
-     ]
-    "/>
         <xsl:variable name="checkedElementsWithCurrent" as="element()*">
             <xsl:if test="exists($checkedElements)">
                 <xsl:for-each select="$checkedElements">
@@ -74,6 +66,12 @@
             </xsl:if>
             <xsl:copy-of select="$element"/>
         </xsl:variable>
+        <xsl:variable name="relatedIdentifiers" select="
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @source and not(local:inElementSet(@target, $checkedElements))]/@target
+            |
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @target and not(local:inElementSet(@source, $checkedElements))]/@source
+        "/>
+        <xsl:variable name="foundElements" select="$root/a:model/a:elements/a:element[contains-token($relatedIdentifiers, @identifier)]"/>
         <xsl:variable name="result" as="element()*">
             <xsl:if test="exists($foundElements)">
                 <xsl:for-each select="$foundElements">
@@ -89,20 +87,14 @@
         <xsl:param name="element"/>
         <xsl:param name="checkedElements"/>
         <xsl:variable name="elementIdentifier" select="$element/@identifier"/>
+        <xsl:variable name="ancestorIdentifiers" select="
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @source and (@xsi:type = 'Realization' or @xsi:type = 'Specialization')]/@target
+            |
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @target and (@xsi:type = 'Aggregation' or @xsi:type = 'Composition')]/@source
+        "/>
         <xsl:variable name="foundElements" select="
-     $root/a:model/a:elements/a:element[
-        not(local:inElementSet(@identifier, $checkedElements)) and (
-           let $otherElementIdentifier := @identifier return (
-              $root/a:model/a:relationships/a:relationship[
-                 ((@xsi:type = 'Realization') and ($elementIdentifier = @source and $otherElementIdentifier = @target))
-                    or ((@xsi:type = 'Specialization') and ($elementIdentifier = @source and $otherElementIdentifier = @target))
-                    or ((@xsi:type = 'Aggregation') and ($elementIdentifier = @target and $otherElementIdentifier = @source))
-                    or ((@xsi:type = 'Composition') and ($elementIdentifier = @target and $otherElementIdentifier = @source))
-              ]
-           )
-        )
-     ]
-    "/>
+            $root/a:model/a:elements/a:element[contains-token($ancestorIdentifiers, @identifier)]
+        "/>
         <xsl:variable name="checkedElementsWithCurrent" as="element()*">
             <xsl:if test="exists($checkedElements)">
                 <xsl:for-each select="$checkedElements">
@@ -174,50 +166,54 @@
     <xsl:function name="local:lackOfPrincipleIsExplained" as="xs:boolean">
         <xsl:param name="element"/>
         <xsl:variable name="ancestorsOrSelf" select="local:findAncestorElements($element, $root/..)"/>
-        <xsl:sequence select="exists(
-     $ancestorsOrSelf[
-        let $elementIdentifier := @identifier return (
-           $root/a:model/a:views/a:diagrams/a:view[
-              let $view := . return (
-                 $view/a:node[
-                    @elementRef = $elementIdentifier and (
-                       let $nodeIdentifier := @identifier return (
-                          $view/a:connection[
-                             ($nodeIdentifier = @source and (
-                                let $otherNodeIdentifier := @target return (
-                                   exists($view/a:node[@identifier = $otherNodeIdentifier and @xsi:type = 'Label'])
-                                )
-                             )) or
-                             ($nodeIdentifier = @target and (
-                                let $otherNodeIdentifier := @source return (
-                                   exists($view/a:node[@identifier = $otherNodeIdentifier and @xsi:type = 'Label'])
-                                )
-                             ))
-                          ]
-                       )
-                    )
-                 ]
-              )
-           ]
-        )
-     ]
-  )"/>
+        <xsl:variable name="result" select="
+             exists($ancestorsOrSelf[
+                let $elementIdentifier := @identifier return (
+                   $root/a:model/a:views/a:diagrams/a:view[
+                      let $view := . return (
+                         $view/a:node[
+                            @elementRef = $elementIdentifier
+                            and (
+                               let $nodeIdentifier := @identifier return (
+                                  $view/a:connection[
+                                     ($nodeIdentifier = @source and (
+                                        let $otherNodeIdentifier := @target return (
+                                           exists($view/a:node[@identifier = $otherNodeIdentifier and @xsi:type = 'Label'])
+                                        )
+                                     )) or
+                                     ($nodeIdentifier = @target and (
+                                        let $otherNodeIdentifier := @source return (
+                                           exists($view/a:node[@identifier = $otherNodeIdentifier and @xsi:type = 'Label'])
+                                        )
+                                     ))
+                                  ]
+                               )
+                            )
+                         ]
+                      )
+                   ]
+                )
+             ])
+        "/>
+<!--        <xsl:message>lackOfPrincipleIsExplained [<xsl:value-of select="$element/a:name"/>] [<xsl:value-of select="$result"/>]</xsl:message>-->
+        <xsl:sequence select="$result"/>
     </xsl:function>
 
     <xsl:function name="local:influencesGrouping" as="xs:boolean">
         <xsl:param name="element"/>
         <xsl:variable name="ancestorsOrSelf" select="local:findAncestorElements($element, $root/..)"/>
-        <xsl:sequence select="exists(
-     $ancestorsOrSelf[
-        let $elementIdentifier := @identifier return (
-           $root/a:model/a:relationships/a:relationship[@source = $elementIdentifier and (
-              let $otherElementIdentifier := @target return (
-                 $root/a:model/a:elements/a:element[@identifier = $otherElementIdentifier and @xsi:type = 'Grouping']
-              )
-           )]
-        )
-     ]
-  )"/>
+        <xsl:variable name="result" select="exists(
+         $ancestorsOrSelf[
+            let $elementIdentifier := @identifier return (
+               $root/a:model/a:relationships/a:relationship[@source = $elementIdentifier and (
+                  let $otherElementIdentifier := @target return (
+                     $root/a:model/a:elements/a:element[@identifier = $otherElementIdentifier and @xsi:type = 'Grouping']
+                  )
+               )]
+            )
+         ]
+      )"/>
+        <xsl:sequence select="$result"/>
     </xsl:function>
 
 </sch:schema>
