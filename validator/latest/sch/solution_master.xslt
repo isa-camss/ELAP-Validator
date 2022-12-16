@@ -978,6 +978,23 @@
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="local:influencesGrouping(.) or local:lackOfPrincipleIsExplained(.)" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="local:influencesGrouping(.) or local:lackOfPrincipleIsExplained(.)">
+          <xsl:attribute name="id">ELAP-005</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-005] Architecture principle '<xsl:text />
+            <xsl:value-of select="./a:name" />
+            <xsl:text />' must be modelled as influencing at least one or more elements (modelled within an ArchiMate 'Grouping' element).</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
     <xsl:apply-templates mode="M19" select="*" />
   </xsl:template>
   <xsl:template match="text()" mode="M19" priority="-1" />

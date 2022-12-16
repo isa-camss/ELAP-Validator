@@ -978,19 +978,6 @@
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M19" select="*" />
-  </xsl:template>
-  <xsl:template match="text()" mode="M19" priority="-1" />
-  <xsl:template match="@*|node()" mode="M19" priority="-2">
-    <xsl:apply-templates mode="M19" select="*" />
-  </xsl:template>
-
-<!--PATTERN SATSpecific-->
-
-
-	<!--RULE -->
-<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M20" priority="1000">
-    <svrl:fired-rule context="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" />
 
 		<!--ASSERT -->
 <xsl:choose>
@@ -1004,13 +991,19 @@
           </xsl:attribute>
           <svrl:text>[ELAP-005] Architecture principle '<xsl:text />
             <xsl:value-of select="./a:name" />
-            <xsl:text />' must be modelled as influencing one or more elements (modelled within an ArchiMate 'Grouping' element).</svrl:text>
+            <xsl:text />' must be modelled as influencing at least one or more elements (modelled within an ArchiMate 'Grouping' element).</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M20" select="*" />
+    <xsl:apply-templates mode="M19" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M20" priority="-1" />
+  <xsl:template match="text()" mode="M19" priority="-1" />
+  <xsl:template match="@*|node()" mode="M19" priority="-2">
+    <xsl:apply-templates mode="M19" select="*" />
+  </xsl:template>
+
+<!--PATTERN SATSpecific-->
+<xsl:template match="text()" mode="M20" priority="-1" />
   <xsl:template match="@*|node()" mode="M20" priority="-2">
     <xsl:apply-templates mode="M20" select="*" />
   </xsl:template>
