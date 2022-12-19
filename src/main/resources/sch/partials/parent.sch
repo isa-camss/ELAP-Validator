@@ -33,22 +33,23 @@
 
     <xsl:function name="local:isRealisedByInteroperabilitySpecification" as="xs:boolean">
         <xsl:param name="element"/>
-        <xsl:variable name="ancestors" select="local:findAncestorElements($element, $root/..)"/>
+        <xsl:variable name="elementIdentifier" select="$element/@identifier"/>
+        <xsl:variable name="ancestorsOrSelf" select="local:findAncestorElements($element, $root/..)"/>
+        <xsl:variable name="otherIdentifiers" select="
+            $root/a:model/a:relationships/a:relationship[@xsi:type = 'Realization' and (
+                let $target := @target return (
+                    exists($ancestorsOrSelf[@identifier = $target])
+                )
+            )]/@source
+        "/>
+        <xsl:variable name="foundElements" select="
+            $root/a:model/a:elements/a:element[contains-token($otherIdentifiers, @identifier)]
+        "/>
         <xsl:variable name="result" select="
-        exists($ancestors[
-            let $elementIdentifier := @identifier return (
-                $root/a:model/a:relationships/a:relationship[
-                    @target = $elementIdentifier
-                    and @xsi:type = 'Realization'
-                    and (let $otherElementIdentifier := @source return (
-                        $root/a:model/a:elements/a:element[@identifier = $otherElementIdentifier and (
-                            exists(local:findAncestorElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])
-                            or exists(local:findChildElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])
-                        )]
-                    ))
-                ]
-            )
-        ])
+            exists($foundElements[
+                exists(local:findAncestorElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])
+                or exists(local:findChildElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])
+            ])
         "/>
 <!--        <xsl:message>isRealisedByInteroperabilitySpecification [<xsl:value-of select="$element/a:name"/>] [<xsl:value-of select="$result"/>]</xsl:message>-->
         <xsl:sequence select="$result"/>
@@ -118,20 +119,14 @@
         <xsl:param name="element"/>
         <xsl:param name="checkedElements"/>
         <xsl:variable name="elementIdentifier" select="$element/@identifier"/>
+        <xsl:variable name="childIdentifiers" select="
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @target and (@xsi:type = 'Realization' or @xsi:type = 'Specialization')]/@source
+            |
+            $root/a:model/a:relationships/a:relationship[$elementIdentifier = @source and (@xsi:type = 'Aggregation' or @xsi:type = 'Composition')]/@target
+        "/>
         <xsl:variable name="foundElements" select="
-     $root/a:model/a:elements/a:element[
-        not(local:inElementSet(@identifier, $checkedElements)) and (
-           let $otherElementIdentifier := @identifier return (
-              $root/a:model/a:relationships/a:relationship[
-                 ((@xsi:type = 'Realization') and ($elementIdentifier = @target and $otherElementIdentifier = @source))
-                    or ((@xsi:type = 'Specialization') and ($elementIdentifier = @target and $otherElementIdentifier = @source))
-                    or ((@xsi:type = 'Aggregation') and ($elementIdentifier = @source and $otherElementIdentifier = @target))
-                    or ((@xsi:type = 'Composition') and ($elementIdentifier = @source and $otherElementIdentifier = @target))
-              ]
-           )
-        )
-     ]
-    "/>
+            $root/a:model/a:elements/a:element[contains-token($childIdentifiers, @identifier)]
+        "/>
         <xsl:variable name="checkedElementsWithCurrent" as="element()*">
             <xsl:if test="exists($checkedElements)">
                 <xsl:for-each select="$checkedElements">
