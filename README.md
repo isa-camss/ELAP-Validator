@@ -72,4 +72,4 @@ Note that any change to any resource in the current repository's master branch w
 The live ELAP validator is available as follows:
 * Via UI at: https://www.itb.ec.europa.eu/elap/upload
 * Via SOAP API at: https://www.itb.ec.europa.eu/elap/api/validation?wsdl
-* Via REST API at: https://www.itb.ec.europa.eu/elap/swagger-ui/index.html
+* Via REST API at: https://www.itb.ec.europa.eu/xml/swagger-ui/index.html
