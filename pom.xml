@@ -105,10 +105,10 @@
                             <svrlDirectory>${project.build.directory}/svrl</svrlDirectory>
                             <schematronProcessingEngine>xslt</schematronProcessingEngine>
                             <!-- Adapt this if you want to use another XSLT file. -->
-                            <schematronFile>${project.basedir}/validator/latest/sch/solution_master.xslt</schematronFile>
+                            <schematronFile>${project.basedir}/validator/latest/sch/sat_master.xslt</schematronFile>
                             <!-- Adapt these two properties if you want to point to a different set of XMLs to validate. -->
                             <xmlDirectory>src/test/resources</xmlDirectory>
-                            <xmlIncludes>**/ELAP valid solution.xml</xmlIncludes>
+                            <xmlIncludes>ELAP_sat.xml</xmlIncludes>
                         </configuration>
                     </execution>
                 </executions>

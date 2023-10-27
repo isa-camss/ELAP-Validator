@@ -6,7 +6,7 @@
                 xmlns:a="http://www.opengroup.org/xsd/archimate/3.0/"
                 xmlns:local="local">
     <xsl:output method="xml" version="1.0" encoding="UTF-8" indent="yes"/>
-    <xsl:variable name="apViewNode" select="/a:model/a:views/a:diagrams/a:view[a:name = 'Architecture Principles viewpoint']"/>
+    <xsl:variable name="apViewNode" select="/a:model/a:views/a:diagrams/a:view[a:name = 'ELAP Architecture Principles']"/>
     <xsl:variable name="apElementNodes" select="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]"/>
     <xsl:variable name="apElementNodeNames" select="$apElementNodes/a:name"/>
 
@@ -17,12 +17,7 @@
 
     <xsl:function name="local:isArchitecturePrinciple" as="xs:boolean">
         <xsl:param name="elementNode"/>
-        <xsl:sequence select="local:inView($elementNode) and starts-with($elementNode/a:name, '&lt;&lt;ELAP:Architecture Principle&gt;&gt;')"/>
-    </xsl:function>
-
-    <xsl:function name="local:removeStereotype" as="xs:string">
-        <xsl:param name="elementName"/>
-        <xsl:sequence select="normalize-space(substring-after(string($elementName), '&gt;&gt;'))"/>
+        <xsl:sequence select="local:inView($elementNode) and starts-with($elementNode/a:properties/a:property[@propertyDefinitionRef='propid-1']/a:value, 'http://data.europa.eu/2sa/elap/')"/>
     </xsl:function>
 
     <xsl:template match="/">
@@ -35,7 +30,7 @@
                     <xsl:for-each select="$apElementNodeNames">
                         <xsl:variable name="apName" select="."/>
                         <xsl:variable name="ruleId" select="'ELAP-001'"/>
-                        <assert id="{$ruleId}" flag="fatal" test="exists(/a:model/a:elements/a:element[a:name = '{$apName}'])">[<xsl:value-of select="$ruleId"/>] Architecture principle '<xsl:value-of select="local:removeStereotype(.)"/>' must be defined in the model.</assert>
+                        <assert id="{$ruleId}" flag="fatal" test="exists(/a:model/a:elements/a:element[a:name = '{$apName}'])">[<xsl:value-of select="$ruleId"/>] Architecture principle '<xsl:value-of select="string($apName)"/>' must be defined in the model.</assert>
                     </xsl:for-each>
                 </rule>
             </pattern>

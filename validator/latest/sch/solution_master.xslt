@@ -26,21 +26,6 @@
         <xsl:param name="elementSet" />
         <xsl:sequence select="exists($elementSet[@identifier = $elementIdentifier])" />
     </xsl:function>
-  <xsl:function as="xs:boolean" name="local:hasStereotype">
-        <xsl:param name="element" />
-        <xsl:param name="stereotype" />
-        <xsl:sequence select="starts-with($element/a:name, concat('&lt;&lt;', $stereotype,'>>'))" />
-    </xsl:function>
-  <xsl:function as="xs:boolean" name="local:isRealisedByInteroperabilitySpecification">
-        <xsl:param name="element" />
-        <xsl:variable name="elementIdentifier" select="$element/@identifier" />
-        <xsl:variable name="ancestorsOrSelf" select="local:findAncestorElements($element, $root/..)" />
-        <xsl:variable name="otherIdentifiers" select="             $root/a:model/a:relationships/a:relationship[@xsi:type = 'Realization' and (                 let $target := @target return (                     exists($ancestorsOrSelf[@identifier = $target])                 )             )]/@source         " />
-        <xsl:variable name="foundElements" select="             $root/a:model/a:elements/a:element[contains-token($otherIdentifiers, @identifier)]         " />
-        <xsl:variable name="result" select="             exists($foundElements[                 exists(local:findAncestorElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])                 or exists(local:findChildElements(., $root/..)[local:hasStereotype(., 'Interoperability Specification')])             ])         " />
-
-        <xsl:sequence select="$result" />
-    </xsl:function>
   <xsl:function as="element()*" name="local:findAllRelatedElements">
         <xsl:param name="element" />
         <xsl:param name="checkedElements" />
@@ -118,9 +103,51 @@
         <xsl:variable name="result" select="local:findAllRelatedElements($element, $root/..)   [@identifier != $element/@identifier and @xsi:type != 'Principle' and @xsi:type != 'Grouping']" />
         <xsl:sequence select="$result" />
     </xsl:function>
+  <xsl:function as="xs:boolean" name="local:isArchitectureBuildingBlock">
+        <xsl:param name="element" />
+        <xsl:sequence select="exists($element[string(./a:properties/a:property[@propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier)]/a:value) = 'eira:ArchitectureBuildingBlock'])" />
+    </xsl:function>
   <xsl:function as="xs:boolean" name="local:isArchitecturePrinciple">
         <xsl:param name="element" />
-        <xsl:sequence select="exists($satPrinciples[a:name = $element/a:name])" />
+        <xsl:sequence select="exists($element[string(./a:properties/a:property[@propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier)]/a:value) = 'eira:ArchitecturePrinciple' and         a:name!='Architecture Principle'])" />
+    </xsl:function>
+  <xsl:function as="xs:boolean" name="local:isSolutionBuildingBlock">
+        <xsl:param name="element" />
+        <xsl:sequence select="exists($element[string(./a:properties/a:property[@propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier)]/a:value) = 'eira:SolutionBuildingBlock' and         contains-token(./a:properties/a:property[@propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier)]/a:value, 'eira:')])" />
+    </xsl:function>
+  <xsl:function as="element()*" name="local:followsCompliancePrinciple">
+         <xsl:param name="element" />
+         <xsl:variable name="result" select="$element[@xsi:type='Principle']" />
+         <xsl:sequence select="$result" />
+     </xsl:function>
+  <xsl:function as="element()*" name="local:abbFromPrinciple">
+        <xsl:param name="element" />
+        <xsl:variable name="abb" select="let $principlePURI := $element/a:properties/a:property[             @propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)            ]/a:value return(                 let $satPrinciple := $satPrinciples[                     string(a:properties/a:property[                         @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)                     ]/a:value) = $principlePURI                ] return (                    let $principleIdentifier := $satPrinciple/@identifier return (                       $satDoc/a:model/a:elements/a:element[                         let $abbIdentifier := @identifier return(                             exists(                             $satDoc/a:model/a:relationships/a:relationship[                                 @target = $abbIdentifier and @source = $principleIdentifier                             ])                         )                       ]/a:name                    )                )            )         " />
+        <xsl:sequence select="$abb" />
+    </xsl:function>
+  <xsl:function as="element()*" name="local:extractAbbRelatedToPrinciple">
+        <xsl:param name="element" />
+        <xsl:variable name="abb" select="$root/a:model/a:elements/a:element[    let $principleIdentifier := $element/@identifier return (     let $abbIdentifier := @identifier return(      exists(      $root/a:model/a:relationships/a:relationship[       @target = $abbIdentifier and @source = $principleIdentifier      ])     )    )]/a:name         " />
+    <xsl:sequence select="$abb" />
+    </xsl:function>
+  <xsl:function as="element()*" name="local:extractSbbRelatedToPrinciple">
+        <xsl:param name="element" />
+        <xsl:variable name="sbb" select="$root/a:model/a:elements/a:element[             let $principleIdentifier := $element/@identifier return (                 let $sbbIdentifier := @identifier return(                     exists(                     $root/a:model/a:relationships/a:relationship[                         @target = $sbbIdentifier and @source = $principleIdentifier                     ])                 )             )]/a:name         " />
+    <xsl:sequence select="$sbb" />
+    </xsl:function>
+  <xsl:function as="xs:boolean" name="local:findAbbRelatedToPrinciple">
+        <xsl:param name="inputPrinciple" />
+		<xsl:variable name="abbsRelatedToPrinciple" select="$root/a:model/a:elements/a:element[       $root/a:model/a:relationships/a:relationship[@source = $inputPrinciple/@identifier]/@target = @identifier and    a:properties/a:property[     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier    ]/a:value = 'eira:ArchitectureBuildingBlock'   ]" />
+		<xsl:variable name="equivalentSatPrincipleIdentifier" select="$satPrinciples[    let $satPrinciplePURI := a:properties/a:property[     @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier    ]/a:value return (     $inputPrinciple/a:properties/a:property[      @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier     ]/a:value = $satPrinciplePURI    )]/@identifier" />
+		<xsl:variable name="result" select="every $abbRelatedToPrinciplePURI in $abbsRelatedToPrinciple/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier   ]/a:value satisfies(                 let $equivalentSatAbbIdentifier := $satDoc/a:model/a:elements/a:element[                     a:properties/a:property[                         @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier                     ]/a:value = $abbRelatedToPrinciplePURI                 ]/@identifier return (                     exists(                         $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]                     ) or                     not(exists($abbsRelatedToPrinciple))                     or exists(                         $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]                     ))   )" />
+    	<xsl:sequence select="$result" />
+    </xsl:function>
+  <xsl:function as="xs:boolean" name="local:findSbbRelatedToPrinciple">
+        <xsl:param name="element" />
+		<xsl:variable name="sbbRelatedToInput" select="$root/a:model/a:elements/a:element[    $root/a:model/a:relationships/a:relationship[@source = $element/@identifier]/@target = @identifier and    a:properties/a:property[     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier    ]/a:value = 'eira:SolutionBuildingBlock'   ]" />
+		<xsl:variable name="abbRelatedToSbbTypes" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]/a:value" />
+		<xsl:variable name="result" select="every $abbType in $abbRelatedToSbbTypes satisfies(    let $satAbb := $satDoc/a:model/a:elements/a:element[     a:properties/a:property[      @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier     ]/a:value = 'eira:ArchitectureBuildingBlock'    ] return(     exists(      $satAbb/a:properties/a:property[       @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier and       a:value = $abbType      ]     ) or     not(exists($sbbRelatedToInput))    )   )" />
+    	<xsl:sequence select="$result" />
     </xsl:function>
   <xsl:function as="xs:boolean" name="local:lackOfPrincipleIsExplained">
         <xsl:param name="element" />
@@ -284,7 +311,7 @@
         <xsl:attribute name="name">CommonCompleteness</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M18" select="/" />
+      <xsl:apply-templates mode="M24" select="/" />
       <svrl:active-pattern>
         <xsl:attribute name="document">
           <xsl:value-of select="document-uri(/)" />
@@ -293,7 +320,7 @@
         <xsl:attribute name="name">Common</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M19" select="/" />
+      <xsl:apply-templates mode="M25" select="/" />
       <svrl:active-pattern>
         <xsl:attribute name="document">
           <xsl:value-of select="document-uri(/)" />
@@ -302,7 +329,7 @@
         <xsl:attribute name="name">SolutionSpecific</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M20" select="/" />
+      <xsl:apply-templates mode="M26" select="/" />
     </svrl:schematron-output>
   </xsl:template>
 
@@ -310,14 +337,14 @@
 <svrl:text>Architecture Principle integrity validation</svrl:text>
   <xsl:param name="root" select="/" />
   <xsl:param name="satDoc" select="document('ELAP_sat.xml')" />
-  <xsl:param name="satView" select="$satDoc/a:model/a:views/a:diagrams/a:view[a:name = 'Architecture Principles viewpoint']" />
-  <xsl:param name="satPrinciples" select="$satDoc/a:model/a:elements/a:element[       let $elementIdentifier := @identifier return (          $satView//a:node[@elementRef = $elementIdentifier]          and starts-with(./a:name, '&lt;&lt;ELAP:Architecture Principle>>')       )     ]" />
+  <xsl:param name="satView" select="$satDoc/a:model/a:views/a:diagrams/a:view[a:name = 'ELAP Architecture Principles']" />
+  <xsl:param name="satPrinciples" select="$satDoc/a:model/a:elements/a:element[string(./a:properties/a:property[@propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier)]/a:value) = 'eira:ArchitecturePrinciple']" />
 
 <!--PATTERN CommonCompleteness-->
 
 
 	<!--RULE -->
-<xsl:template match="/a:model" mode="M18" priority="1000">
+<xsl:template match="/a:model" mode="M24" priority="1000">
     <svrl:fired-rule context="/a:model" />
 
 		<!--ASSERT -->
@@ -336,219 +363,24 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Technology Neutrality'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Transparency of the administrative environment'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Technology Neutrality'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Transparency of the administrative environment'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Technology Neutrality' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Transparency of the administrative environment' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Accessibility'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Preservation of information' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Reuse, before buy, before build'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Reuse, before buy, before build'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Reuse, before buy, before build' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Openness'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Openness'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Openness' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Transparency'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Transparency'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Transparency' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Preservation of information' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Data portability'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Data portability'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Data portability' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Privacy'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Privacy'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Privacy' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Service Orientation'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Service Orientation'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Service Orientation' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Multilingulism'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Multilingulism'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Multilingulism' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> User-centricity'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> User-centricity'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'User-centricity' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Security by design'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Security by design'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Security by design' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Preservation of information'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Preservation of information' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Accountability'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Accountability'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Accountability' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Accessibility'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Accessibility'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Accessibility'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -561,24 +393,24 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Administrative Simplification'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Accountability'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Administrative Simplification'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Accountability'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Administrative Simplification' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Accountability' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Best fit Public Service Implementation Orientation'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Best fit Public Service Implementation Orientation'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Best fit Public Service Implementation Orientation'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Best fit Public Service Implementation Orientation'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -591,24 +423,9 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Carbon-dioxide e-footprint impact awareness'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Care from cradle to grave'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Carbon-dioxide e-footprint impact awareness'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Carbon-dioxide e-footprint impact awareness' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Care from cradle to grave'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Care from cradle to grave'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Care from cradle to grave'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -621,114 +438,84 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Code of ethics compliance'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data Sovereignty'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Code of ethics compliance'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data Sovereignty'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Code of ethics compliance' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Data Sovereignty' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Convergence assurance on public policy goals attainment'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Deployment fit (Cloud-first approach)'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Convergence assurance on public policy goals attainment'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Deployment fit (Cloud-first approach)'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Convergence assurance on public policy goals attainment' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Deployment fit (Cloud-first approach)' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Convergence control on public policy goals attainment'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Digital First'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Convergence control on public policy goals attainment'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Digital First'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Convergence control on public policy goals attainment' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Digital First' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Digital Inclusion'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Digital Partnership'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Digital Inclusion'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Digital Partnership'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Digital Inclusion' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Digital Partnership' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> EU Legislation Compliance'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Digital sovereignty and autonomy'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> EU Legislation Compliance'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Digital sovereignty and autonomy'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'EU Legislation Compliance' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Digital sovereignty and autonomy' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> EULF compliance'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Evidence based Public Policy'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> EULF compliance'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'EULF compliance' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> European digital sovereignty'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> European digital sovereignty'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'European digital sovereignty' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Evidence based Public Policy'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Evidence based Public Policy'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Evidence based Public Policy'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -741,144 +528,9 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Innovation'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Social participation'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Innovation'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Innovation' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Integrated Horizontal User Experience'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Integrated Horizontal User Experience'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Integrated Horizontal User Experience' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Loosely coupled integration'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Loosely coupled integration'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Loosely coupled integration' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Market collaboration'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Market collaboration'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Market collaboration' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> New Public Management approach'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> New Public Management approach'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'New Public Management approach' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Once Only'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Once Only'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Once Only' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Primacy of principles'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Primacy of principles'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Primacy of principles' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Trust'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Trust'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Trust' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Subsidiarity and proportionality'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Subsidiarity and proportionality'])">
-          <xsl:attribute name="id">ELAP-001</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Subsidiarity and proportionality' must be defined in the model.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Social participation'])" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Social participation'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Social participation'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -891,24 +543,234 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Public Value'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Transparency of internal information systems'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Public Value'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Transparency of internal information systems'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Public Value' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Transparency of internal information systems' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Proactiveness'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Administrative Simplification'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Proactiveness'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Administrative Simplification'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Administrative Simplification' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Carbon-dioxide e-footprint impact awareness'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Carbon-dioxide e-footprint impact awareness'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Carbon-dioxide e-footprint impact awareness' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Code of ethics compliance'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Code of ethics compliance'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Code of ethics compliance' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Convergence assurance on public policy goals attainment'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Convergence assurance on public policy goals attainment'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Convergence assurance on public policy goals attainment' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data portability'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data portability'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Data portability' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'EU Legislation Compliance'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'EU Legislation Compliance'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'EU Legislation Compliance' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'EU Localisation Framework compliance'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'EU Localisation Framework compliance'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'EU Localisation Framework compliance' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Integrated Horizontal User Experience'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Integrated Horizontal User Experience'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Integrated Horizontal User Experience' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Loosely coupled integration'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Loosely coupled integration'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Loosely coupled integration' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Multilingualism'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Multilingualism'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Multilingualism' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Neo-Weberian-State approach (NWS)'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Neo-Weberian-State approach (NWS)'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Neo-Weberian-State approach (NWS)' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Once Only'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Once Only'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Once Only' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Openness'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Openness'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Openness' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Privacy'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Privacy'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Privacy' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Proactiveness'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Proactiveness'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -921,37 +783,232 @@
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Deployment fit (Cloud-first approach)'])" />
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Reuse, before buy, before build'])" />
       <xsl:otherwise>
-        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = '&lt;&lt;ELAP:Architecture Principle>> Deployment fit (Cloud-first approach)'])">
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Reuse, before buy, before build'])">
           <xsl:attribute name="id">ELAP-001</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-001] Architecture principle 'Deployment fit (Cloud-first approach)' must be defined in the model.</svrl:text>
+          <svrl:text>[ELAP-001] Architecture principle 'Reuse, before buy, before build' must be defined in the model.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M18" select="*" />
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Service Orientation'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Service Orientation'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Service Orientation' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Subsidiarity and proportionality'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Subsidiarity and proportionality'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Subsidiarity and proportionality' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Technology Neutrality'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Technology Neutrality'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Technology Neutrality' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'User-centricity'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'User-centricity'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'User-centricity' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Convergence control on public policy goals attainment'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Convergence control on public policy goals attainment'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Convergence control on public policy goals attainment' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data Accessibility'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data Accessibility'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Data Accessibility' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data Findability'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data Findability'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Data Findability' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data Interoperability'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data Interoperability'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Data Interoperability' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Data Reusability'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Data Reusability'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Data Reusability' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Preservation of information'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Preservation of information'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Preservation of information' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Security by Design'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Security by Design'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Security by Design' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Trust'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Trust'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Trust' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+
+		<!--ASSERT -->
+<xsl:choose>
+      <xsl:when test="exists(/a:model/a:elements/a:element[a:name = 'Innovation'])" />
+      <xsl:otherwise>
+        <svrl:failed-assert test="exists(/a:model/a:elements/a:element[a:name = 'Innovation'])">
+          <xsl:attribute name="id">ELAP-001</xsl:attribute>
+          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="location">
+            <xsl:apply-templates mode="schematron-select-full-path" select="." />
+          </xsl:attribute>
+          <svrl:text>[ELAP-001] Architecture principle 'Innovation' must be defined in the model.</svrl:text>
+        </svrl:failed-assert>
+      </xsl:otherwise>
+    </xsl:choose>
+    <xsl:apply-templates mode="M24" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M18" priority="-1" />
-  <xsl:template match="@*|node()" mode="M18" priority="-2">
-    <xsl:apply-templates mode="M18" select="*" />
+  <xsl:template match="text()" mode="M24" priority="-1" />
+  <xsl:template match="@*|node()" mode="M24" priority="-2">
+    <xsl:apply-templates mode="M24" select="*" />
   </xsl:template>
 
 <!--PATTERN Common-->
 
 
 	<!--RULE -->
-<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M19" priority="1000">
+<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M25" priority="1000">
     <svrl:fired-rule context="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" />
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="@xsi:type = 'Principle'" />
+      <xsl:when test="local:followsCompliancePrinciple(.)" />
       <xsl:otherwise>
-        <svrl:failed-assert test="@xsi:type = 'Principle'">
+        <svrl:failed-assert test="local:followsCompliancePrinciple(.)">
           <xsl:attribute name="id">ELAP-002</xsl:attribute>
           <xsl:attribute name="flag">warning</xsl:attribute>
           <xsl:attribute name="location">
@@ -971,23 +1028,23 @@
       <xsl:when test="exists(local:findNonHierarchicalLinkedElements(.)) or local:lackOfPrincipleIsExplained(.)" />
       <xsl:otherwise>
         <svrl:failed-assert test="exists(local:findNonHierarchicalLinkedElements(.)) or local:lackOfPrincipleIsExplained(.)">
-          <xsl:attribute name="id">ELAP-004</xsl:attribute>
+          <xsl:attribute name="id">ELAP-003</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>
-          <svrl:text>[ELAP-004] '<xsl:text />
+          <svrl:text>[ELAP-003] '<xsl:text />
             <xsl:value-of select="./a:name" />
-            <xsl:text />' must be linked to at least one element in the model.</svrl:text>
+            <xsl:text />' must be associated with at least one element in the model, not being a 'principle'. If the principle is not used, associate it to a note (Archi  “note” element).</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
 
 		<!--ASSERT -->
 <xsl:choose>
-      <xsl:when test="local:influencesGrouping(.) or local:lackOfPrincipleIsExplained(.)" />
+      <xsl:when test="local:findSbbRelatedToPrinciple(.)" />
       <xsl:otherwise>
-        <svrl:failed-assert test="local:influencesGrouping(.) or local:lackOfPrincipleIsExplained(.)">
+        <svrl:failed-assert test="local:findSbbRelatedToPrinciple(.)">
           <xsl:attribute name="id">ELAP-005</xsl:attribute>
           <xsl:attribute name="flag">fatal</xsl:attribute>
           <xsl:attribute name="location">
@@ -995,44 +1052,24 @@
           </xsl:attribute>
           <svrl:text>[ELAP-005] Architecture principle '<xsl:text />
             <xsl:value-of select="./a:name" />
-            <xsl:text />' must be modelled as influencing at least one or more elements (modelled within an ArchiMate 'Grouping' element).</svrl:text>
+            <xsl:text />' must be modelled and related to the correct SBBs (currently realized by the following ABBs: <xsl:text />
+            <xsl:value-of select="local:extractSbbRelatedToPrinciple(.)" />
+            <xsl:text />) through the correct ABB(s): <xsl:text />
+            <xsl:value-of select="local:abbFromPrinciple(.)" />
+            <xsl:text />.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M19" select="*" />
+    <xsl:apply-templates mode="M25" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M19" priority="-1" />
-  <xsl:template match="@*|node()" mode="M19" priority="-2">
-    <xsl:apply-templates mode="M19" select="*" />
+  <xsl:template match="text()" mode="M25" priority="-1" />
+  <xsl:template match="@*|node()" mode="M25" priority="-2">
+    <xsl:apply-templates mode="M25" select="*" />
   </xsl:template>
 
 <!--PATTERN SolutionSpecific-->
-
-
-	<!--RULE -->
-<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M20" priority="1000">
-    <svrl:fired-rule context="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" />
-
-		<!--ASSERT -->
-<xsl:choose>
-      <xsl:when test="local:isRealisedByInteroperabilitySpecification(.) or local:lackOfPrincipleIsExplained(.)" />
-      <xsl:otherwise>
-        <svrl:failed-assert test="local:isRealisedByInteroperabilitySpecification(.) or local:lackOfPrincipleIsExplained(.)">
-          <xsl:attribute name="id">ELAP-003</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
-          <xsl:attribute name="location">
-            <xsl:apply-templates mode="schematron-select-full-path" select="." />
-          </xsl:attribute>
-          <svrl:text>[ELAP-003] Architecture principle '<xsl:text />
-            <xsl:value-of select="./a:name" />
-            <xsl:text />' must be realised by an Interoperability Specification.</svrl:text>
-        </svrl:failed-assert>
-      </xsl:otherwise>
-    </xsl:choose>
-    <xsl:apply-templates mode="M20" select="*" />
-  </xsl:template>
-  <xsl:template match="text()" mode="M20" priority="-1" />
-  <xsl:template match="@*|node()" mode="M20" priority="-2">
-    <xsl:apply-templates mode="M20" select="*" />
+<xsl:template match="text()" mode="M26" priority="-1" />
+  <xsl:template match="@*|node()" mode="M26" priority="-2">
+    <xsl:apply-templates mode="M26" select="*" />
   </xsl:template>
 </xsl:stylesheet>
