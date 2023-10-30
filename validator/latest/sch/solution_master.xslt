@@ -120,20 +120,20 @@
          <xsl:variable name="result" select="$element[@xsi:type='Principle']" />
          <xsl:sequence select="$result" />
      </xsl:function>
-  <xsl:function as="element()*" name="local:abbFromPrinciple">
+  <xsl:function as="xs:string*" name="local:abbFromPrinciple">
         <xsl:param name="element" />
         <xsl:variable name="abb" select="let $principlePURI := $element/a:properties/a:property[             @propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)            ]/a:value return(                 let $satPrinciple := $satPrinciples[                     string(a:properties/a:property[                         @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)                     ]/a:value) = $principlePURI                ] return (                    let $principleIdentifier := $satPrinciple/@identifier return (                       $satDoc/a:model/a:elements/a:element[                         let $abbIdentifier := @identifier return(                             exists(                             $satDoc/a:model/a:relationships/a:relationship[                                 @target = $abbIdentifier and @source = $principleIdentifier                             ])                         )                       ]/a:name                    )                )            )         " />
-        <xsl:sequence select="$abb" />
+        <xsl:sequence select="string-join($abb, ', ')" />
     </xsl:function>
-  <xsl:function as="element()*" name="local:extractAbbRelatedToPrinciple">
+  <xsl:function as="xs:string*" name="local:extractAbbRelatedToPrinciple">
         <xsl:param name="element" />
         <xsl:variable name="abb" select="$root/a:model/a:elements/a:element[    let $principleIdentifier := $element/@identifier return (     let $abbIdentifier := @identifier return(      exists(      $root/a:model/a:relationships/a:relationship[       @target = $abbIdentifier and @source = $principleIdentifier      ])     )    )]/a:name         " />
-    <xsl:sequence select="$abb" />
+        <xsl:sequence select="string-join($abb, ', ')" />
     </xsl:function>
-  <xsl:function as="element()*" name="local:extractSbbRelatedToPrinciple">
+  <xsl:function as="xs:string*" name="local:extractSbbRelatedToPrinciple">
         <xsl:param name="element" />
         <xsl:variable name="sbb" select="$root/a:model/a:elements/a:element[             let $principleIdentifier := $element/@identifier return (                 let $sbbIdentifier := @identifier return(                     exists(                     $root/a:model/a:relationships/a:relationship[                         @target = $sbbIdentifier and @source = $principleIdentifier                     ])                 )             )]/a:name         " />
-    <xsl:sequence select="$sbb" />
+        <xsl:sequence select="string-join($sbb, ', ')" />
     </xsl:function>
   <xsl:function as="xs:boolean" name="local:findAbbRelatedToPrinciple">
         <xsl:param name="inputPrinciple" />
@@ -145,7 +145,7 @@
   <xsl:function as="xs:boolean" name="local:findSbbRelatedToPrinciple">
         <xsl:param name="element" />
 		<xsl:variable name="sbbRelatedToInput" select="$root/a:model/a:elements/a:element[    $root/a:model/a:relationships/a:relationship[@source = $element/@identifier]/@target = @identifier and    a:properties/a:property[     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier    ]/a:value = 'eira:SolutionBuildingBlock'   ]" />
-		<xsl:variable name="abbRelatedToSbbTypes" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]/a:value" />
+		<xsl:variable name="abbRelatedToSbbTypes" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]" />
 		<xsl:variable name="result" select="every $abbType in $abbRelatedToSbbTypes satisfies(    let $satAbb := $satDoc/a:model/a:elements/a:element[     a:properties/a:property[      @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier     ]/a:value = 'eira:ArchitectureBuildingBlock'    ] return(     exists(      $satAbb/a:properties/a:property[       @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier and       a:value = $abbType      ]     ) or     not(exists($sbbRelatedToInput))    )   )" />
     	<xsl:sequence select="$result" />
     </xsl:function>
