@@ -153,13 +153,11 @@
                     ]/a:value) = $principlePURI
                ] return (
                    let $principleIdentifier := $satPrinciple/@identifier return (
-                      $satDoc/a:model/a:elements/a:element[
-                        let $abbIdentifier := @identifier return(
+                      $satAbb[
                             exists(
                             $satDoc/a:model/a:relationships/a:relationship[
-                                @target = $abbIdentifier and @source = $principleIdentifier
+                                @target = @identifier and @source = $principleIdentifier
                             ])
-                        )
                       ]/a:name
                    )
                )
@@ -170,14 +168,12 @@
 
     <xsl:function name="local:extractAbbRelatedToPrinciple" as="xs:string*">
         <xsl:param name="element"/>
-        <xsl:variable name="abb" select="$root/a:model/a:elements/a:element[
+        <xsl:variable name="abb" select="$inputAbb[
 			let $principleIdentifier := $element/@identifier return (
-				let $abbIdentifier := @identifier return(
 					exists(
 					$root/a:model/a:relationships/a:relationship[
-						@target = $abbIdentifier and @source = $principleIdentifier
+						@target = @identifier and @source = $principleIdentifier
 					])
-				)
 			)]/a:name
         "/>
         <xsl:sequence select="string-join($abb, ', ')"/>
@@ -185,14 +181,12 @@
 
     <xsl:function name="local:extractSbbRelatedToPrinciple" as="xs:string*">
         <xsl:param name="element"/>
-        <xsl:variable name="sbb" select="$root/a:model/a:elements/a:element[
+        <xsl:variable name="sbb" select="$inputSbb[
             let $principleIdentifier := $element/@identifier return (
-                let $sbbIdentifier := @identifier return(
                     exists(
                     $root/a:model/a:relationships/a:relationship[
-                        @target = $sbbIdentifier and @source = $principleIdentifier
+                        @target = @identifier and @source = $principleIdentifier
                     ])
-                )
             )]/a:name
         "/>
         <xsl:sequence select="string-join($sbb, ', ')"/>
