@@ -13,6 +13,7 @@
     <sch:let name="satDoc" value="document('ELAP_sat.xml')"/>
     <sch:let name="satView" value="$satDoc/a:model/a:views/a:diagrams/a:view[a:name = 'ELAP Architecture Principles']"/>
     <sch:let name="satPrinciples" value="$satDoc/a:model/a:elements/a:element[string(./a:properties/a:property[@propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier)]/a:value) = 'eira:ArchitecturePrinciple']"/>
+    <sch:let name="inputPrinciples" value="$root/a:model/a:elements/a:element[string(./a:properties/a:property[@propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier)]/a:value) = 'eira:ArchitecturePrinciple']"/>
     <sch:let name="inputAbb" value="$root/a:model/a:elements/a:element[
        a:properties/a:property[
                     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier
@@ -24,6 +25,7 @@
     <sch:let name="satAbb" value="$satDoc/a:model/a:elements/a:element[
        a:properties/a:property[
                     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier
+                ]/a:value = 'eira:ArchitectureBuildingBlock']"/>
                 ]/a:value = 'eira:ArchitectureBuildingBlock']"/>
 
     <xsl:function name="local:inElementSet" as="xs:boolean">
@@ -138,27 +140,18 @@
 
     <xsl:function name="local:abbFromPrinciple" as="xs:string*">
         <xsl:param name="element"/>
-        <xsl:variable name="abb" select="let $principlePURI := $element/a:properties/a:property[
-            @propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)
-           ]/a:value return(
-                let $satPrinciple := $satPrinciples[
-                    string(a:properties/a:property[
-                        @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)
-                    ]/a:value) = $principlePURI
-               ] return (
-                   let $principleIdentifier := $satPrinciple/@identifier return (
-                      $satDoc/a:model/a:elements/a:element[
-                        let $abbIdentifier := @identifier return(
-                            exists(
-                            $satDoc/a:model/a:relationships/a:relationship[
-                                @target = $abbIdentifier and @source = $principleIdentifier
-                            ])
-                        )
-                      ]/a:name
-                   )
-               )
-           )
-        "/>
+        <xsl:variable name="abb" select="$satAbb[let $satAbbIdentifier := ./@identifier return(let $principlePURI := $element/a:properties/a:property[
+               @propertyDefinitionRef = string($root/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)
+               ]/a:value return(let $satPrincipleIdentifier := $satPrinciples[
+                     string(a:properties/a:property[
+                         @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[string(a:name) = 'eira:PURI']/@identifier)
+                     ]/a:value) = $principlePURI]/@identifier return(
+                          exists($satDoc/a:model/a:relationships/a:relationship[
+                              @target = $satAbbIdentifier and @source = $satPrincipleIdentifier
+                          ])
+                     )
+                )
+            )]/a:name"/>
         <xsl:sequence select="string-join($abb, ', ')"/>
     </xsl:function>
 
@@ -200,9 +193,7 @@
                         $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]
                     ) or
                     not(exists($abbsRelatedToPrinciple))
-                    or exists(
-                        $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]
-                    ))
+                    )
 		)"/>
     	<xsl:sequence select="$result"/>
     </xsl:function>
