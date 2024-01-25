@@ -108,7 +108,7 @@
                             <schematronFile>${project.basedir}/validator/latest/sch/sat_master.xslt</schematronFile>
                             <!-- Adapt these two properties if you want to point to a different set of XMLs to validate. -->
                             <xmlDirectory>src/test/resources</xmlDirectory>
-                            <xmlIncludes>ELAP_sat.xml</xmlIncludes>
+                            <xmlIncludes>Validation-Sample-7.xml</xmlIncludes>
                         </configuration>
                     </execution>
                 </executions>

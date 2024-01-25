@@ -1037,7 +1037,7 @@
       <xsl:otherwise>
         <svrl:failed-assert test="local:findSbbRelatedToPrinciple(.)">
           <xsl:attribute name="id">ELAP-005</xsl:attribute>
-          <xsl:attribute name="flag">fatal</xsl:attribute>
+          <xsl:attribute name="flag">warning</xsl:attribute>
           <xsl:attribute name="location">
             <xsl:apply-templates mode="schematron-select-full-path" select="." />
           </xsl:attribute>

@@ -26,7 +26,6 @@
        a:properties/a:property[
                     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier
                 ]/a:value = 'eira:ArchitectureBuildingBlock']"/>
-                ]/a:value = 'eira:ArchitectureBuildingBlock']"/>
 
     <xsl:function name="local:inElementSet" as="xs:boolean">
         <xsl:param name="elementIdentifier"/>
