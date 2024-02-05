@@ -129,12 +129,23 @@
 		<xsl:variable name="result" select="every $abbRelatedToPrinciplePURI in $abbsRelatedToPrinciple/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier   ]/a:value satisfies(                 let $equivalentSatAbbIdentifier := $satAbb[                     a:properties/a:property[                         @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier                     ]/a:value = $abbRelatedToPrinciplePURI                 ]/@identifier return (                     exists(                         $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]                     ) or                     not(exists($abbsRelatedToPrinciple))                     )   )" />
     	<xsl:sequence select="$result" />
     </xsl:function>
+  <xsl:function as="xs:boolean" name="local:testing">
+		<xsl:param name="inputPrinciple" />
+		<xsl:variable name="sbbRelatedToInput" select="$inputSbb[    $root/a:model/a:relationships/a:relationship[@source = $inputPrinciple/@identifier]/@target = @identifier]" />
+		<xsl:variable name="abbImplementeBySbb" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]/a:value" />
+		<xsl:variable name="equivalentSatPrincipleIdentifier" select="$satPrinciples[    let $satPrinciplePURI := a:properties/a:property[     @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier    ]/a:value return (     $inputPrinciple/a:properties/a:property[      @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier     ]/a:value = $satPrinciplePURI    )]/@identifier" />
+		<xsl:variable name="equivalentSatAbb" select="$satAbb[    a:properties/a:property[     @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier     ]/a:value = $abbImplementeBySbb    ]" />
+		<xsl:variable name="result" select="let $equivalentSatAbbIdentifier := $equivalentSatAbb/@identifier return (    exists(     $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]    ) or     not(exists($sbbRelatedToInput))    )" />
+		<xsl:sequence select="$result" />
+	</xsl:function>
   <xsl:function as="xs:boolean" name="local:findSbbRelatedToPrinciple">
-        <xsl:param name="element" />
-		<xsl:variable name="sbbRelatedToInput" select="$inputSbb[    $root/a:model/a:relationships/a:relationship[@source = $element/@identifier]/@target = @identifier]" />
-		<xsl:variable name="abbRelatedToSbbTypes" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]" />
-		<xsl:variable name="result" select="every $abbType in $abbRelatedToSbbTypes satisfies(     exists(      $satAbb/a:properties/a:property[       @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier and       a:value = $abbType      ]     ) or     not(exists($sbbRelatedToInput))    )" />
-    	<xsl:sequence select="$result" />
+		<xsl:param name="inputPrinciple" />
+		<xsl:variable name="sbbRelatedToInput" select="$inputSbb[    $root/a:model/a:relationships/a:relationship[@source = $inputPrinciple/@identifier]/@target = @identifier]" />
+		<xsl:variable name="abbImplementeBySbb" select="$sbbRelatedToInput/a:properties/a:property[    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier   ]/a:value" />
+		<xsl:variable name="equivalentSatPrincipleIdentifier" select="$satPrinciples[    let $satPrinciplePURI := a:properties/a:property[     @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier    ]/a:value return (     $inputPrinciple/a:properties/a:property[      @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier     ]/a:value = $satPrinciplePURI    )]/@identifier" />
+		<xsl:variable name="equivalentSatAbb" select="$satAbb[    a:properties/a:property[     @propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier     ]/a:value = $abbImplementeBySbb    ]" />
+		<xsl:variable name="result" select="let $equivalentSatAbbIdentifier := $equivalentSatAbb/@identifier return (    exists(     $satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]    ) or     not(exists($sbbRelatedToInput))    )" />
+		<xsl:sequence select="$result" />
     </xsl:function>
   <xsl:function as="xs:boolean" name="local:lackOfPrincipleIsExplained">
         <xsl:param name="element" />
@@ -298,7 +309,7 @@
         <xsl:attribute name="name">CommonCompleteness</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M25" select="/" />
+      <xsl:apply-templates mode="M26" select="/" />
       <svrl:active-pattern>
         <xsl:attribute name="document">
           <xsl:value-of select="document-uri(/)" />
@@ -307,7 +318,7 @@
         <xsl:attribute name="name">Common</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M26" select="/" />
+      <xsl:apply-templates mode="M27" select="/" />
       <svrl:active-pattern>
         <xsl:attribute name="document">
           <xsl:value-of select="document-uri(/)" />
@@ -316,7 +327,7 @@
         <xsl:attribute name="name">SATSpecific</xsl:attribute>
         <xsl:apply-templates />
       </svrl:active-pattern>
-      <xsl:apply-templates mode="M27" select="/" />
+      <xsl:apply-templates mode="M28" select="/" />
     </svrl:schematron-output>
   </xsl:template>
 
@@ -329,13 +340,13 @@
   <xsl:param name="inputPrinciples" select="$root/a:model/a:elements/a:element[string(./a:properties/a:property[@propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier)]/a:value) = 'eira:ArchitecturePrinciple']" />
   <xsl:param name="inputAbb" select="$root/a:model/a:elements/a:element[        a:properties/a:property[                     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier                 ]/a:value = 'eira:ArchitectureBuildingBlock']" />
   <xsl:param name="inputSbb" select="$root/a:model/a:elements/a:element[        a:properties/a:property[            @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier           ]/a:value = 'eira:SolutionBuildingBlock']" />
-  <xsl:param name="satAbb" select="$satDoc/a:model/a:elements/a:element[        a:properties/a:property[                     @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier                 ]/a:value = 'eira:ArchitectureBuildingBlock']" />
+  <xsl:param name="satAbb" select="$satDoc/a:model/a:elements/a:element[        string(./a:properties/a:property[                     @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier)                 ]/a:value) = 'eira:ArchitectureBuildingBlock']" />
 
 <!--PATTERN CommonCompleteness-->
 
 
 	<!--RULE -->
-<xsl:template match="/a:model" mode="M25" priority="1000">
+<xsl:template match="/a:model" mode="M26" priority="1000">
     <svrl:fired-rule context="/a:model" />
 
 		<!--ASSERT -->
@@ -981,18 +992,18 @@
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M25" select="*" />
+    <xsl:apply-templates mode="M26" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M25" priority="-1" />
-  <xsl:template match="@*|node()" mode="M25" priority="-2">
-    <xsl:apply-templates mode="M25" select="*" />
+  <xsl:template match="text()" mode="M26" priority="-1" />
+  <xsl:template match="@*|node()" mode="M26" priority="-2">
+    <xsl:apply-templates mode="M26" select="*" />
   </xsl:template>
 
 <!--PATTERN Common-->
 
 
 	<!--RULE -->
-<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M26" priority="1000">
+<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M27" priority="1000">
     <svrl:fired-rule context="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" />
 
 		<!--ASSERT -->
@@ -1043,26 +1054,24 @@
           </xsl:attribute>
           <svrl:text>[ELAP-005] Architecture principle '<xsl:text />
             <xsl:value-of select="./a:name" />
-            <xsl:text />' must be modelled and related to the correct SBBs (currently are: <xsl:text />
-            <xsl:value-of select="local:extractSbbRelatedToPrinciple(.)" />
-            <xsl:text />) through the correct ABB(s): <xsl:text />
+            <xsl:text />' must be modelled and related to the correct SBBs through the correct ABB. Any of the following ABBs can be related to this principle: <xsl:text />
             <xsl:value-of select="local:abbFromPrinciple(.)" />
             <xsl:text />.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M26" select="*" />
+    <xsl:apply-templates mode="M27" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M26" priority="-1" />
-  <xsl:template match="@*|node()" mode="M26" priority="-2">
-    <xsl:apply-templates mode="M26" select="*" />
+  <xsl:template match="text()" mode="M27" priority="-1" />
+  <xsl:template match="@*|node()" mode="M27" priority="-2">
+    <xsl:apply-templates mode="M27" select="*" />
   </xsl:template>
 
 <!--PATTERN SATSpecific-->
 
 
 	<!--RULE -->
-<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M27" priority="1000">
+<xsl:template match="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" mode="M28" priority="1000">
     <svrl:fired-rule context="/a:model/a:elements/a:element[local:isArchitecturePrinciple(.)]" />
 
 		<!--ASSERT -->
@@ -1077,18 +1086,16 @@
           </xsl:attribute>
           <svrl:text>[ELAP-004] Architecture principle '<xsl:text />
             <xsl:value-of select="./a:name" />
-            <xsl:text />' must be modelled and related to the correct ABB (currently are: <xsl:text />
-            <xsl:value-of select="local:extractAbbRelatedToPrinciple(.)" />
-            <xsl:text />): <xsl:text />
+            <xsl:text />' must be modelled and related to the correct ABB. Any of the following ABBs can be related to this principle: <xsl:text />
             <xsl:value-of select="local:abbFromPrinciple(.)" />
             <xsl:text />.</svrl:text>
         </svrl:failed-assert>
       </xsl:otherwise>
     </xsl:choose>
-    <xsl:apply-templates mode="M27" select="*" />
+    <xsl:apply-templates mode="M28" select="*" />
   </xsl:template>
-  <xsl:template match="text()" mode="M27" priority="-1" />
-  <xsl:template match="@*|node()" mode="M27" priority="-2">
-    <xsl:apply-templates mode="M27" select="*" />
+  <xsl:template match="text()" mode="M28" priority="-1" />
+  <xsl:template match="@*|node()" mode="M28" priority="-2">
+    <xsl:apply-templates mode="M28" select="*" />
   </xsl:template>
 </xsl:stylesheet>

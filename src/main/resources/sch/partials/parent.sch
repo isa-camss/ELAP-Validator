@@ -23,9 +23,9 @@
        				@propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier
        			]/a:value = 'eira:SolutionBuildingBlock']"/>
     <sch:let name="satAbb" value="$satDoc/a:model/a:elements/a:element[
-       a:properties/a:property[
-                    @propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier
-                ]/a:value = 'eira:ArchitectureBuildingBlock']"/>
+       string(./a:properties/a:property[
+                    @propertyDefinitionRef = string($satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:concept']/@identifier)
+                ]/a:value) = 'eira:ArchitectureBuildingBlock']"/>
 
     <xsl:function name="local:inElementSet" as="xs:boolean">
         <xsl:param name="elementIdentifier"/>
@@ -197,23 +197,63 @@
     	<xsl:sequence select="$result"/>
     </xsl:function>
 
-    <xsl:function name="local:findSbbRelatedToPrinciple" as="xs:boolean">
-        <xsl:param name="element"/>
+
+	<xsl:function name="local:testing" as="xs:boolean">
+		<xsl:param name="inputPrinciple"/>
 		<xsl:variable name="sbbRelatedToInput" select="$inputSbb[
-			$root/a:model/a:relationships/a:relationship[@source = $element/@identifier]/@target = @identifier]"/>
-		<xsl:variable name="abbRelatedToSbbTypes" select="$sbbRelatedToInput/a:properties/a:property[
+			$root/a:model/a:relationships/a:relationship[@source = $inputPrinciple/@identifier]/@target = @identifier]"/>
+		<xsl:variable name="abbImplementeBySbb" select="$sbbRelatedToInput/a:properties/a:property[
 			@propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier
-		]"/>
-		<xsl:variable name="result" select="every $abbType in $abbRelatedToSbbTypes satisfies(
-				exists(
-					$satAbb/a:properties/a:property[
-						@propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier and
-						a:value = $abbType
-					]
-				) or
-				not(exists($sbbRelatedToInput))
+		]/a:value"/>
+		<xsl:variable name="equivalentSatPrincipleIdentifier" select="$satPrinciples[
+			let $satPrinciplePURI := a:properties/a:property[
+				@propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier
+			]/a:value return (
+				$inputPrinciple/a:properties/a:property[
+					@propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier
+				]/a:value = $satPrinciplePURI
+			)]/@identifier"/>
+		<xsl:variable name="equivalentSatAbb" select="$satAbb[
+			a:properties/a:property[
+				@propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier
+				]/a:value = $abbImplementeBySbb
+			]"/>
+		<xsl:variable name="result" select="let $equivalentSatAbbIdentifier := $equivalentSatAbb/@identifier return (
+			exists(
+				$satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]
+			) or 
+			not(exists($sbbRelatedToInput))
 			)"/>
-    	<xsl:sequence select="$result"/>
+		<xsl:sequence select="$result"/>
+	</xsl:function>
+
+    <xsl:function name="local:findSbbRelatedToPrinciple" as="xs:boolean">
+		<xsl:param name="inputPrinciple"/>
+		<xsl:variable name="sbbRelatedToInput" select="$inputSbb[
+			$root/a:model/a:relationships/a:relationship[@source = $inputPrinciple/@identifier]/@target = @identifier]"/>
+		<xsl:variable name="abbImplementeBySbb" select="$sbbRelatedToInput/a:properties/a:property[
+			@propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:ABB']/@identifier
+		]/a:value"/>
+		<xsl:variable name="equivalentSatPrincipleIdentifier" select="$satPrinciples[
+			let $satPrinciplePURI := a:properties/a:property[
+				@propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier
+			]/a:value return (
+				$inputPrinciple/a:properties/a:property[
+					@propertyDefinitionRef = $root/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'eira:PURI']/@identifier
+				]/a:value = $satPrinciplePURI
+			)]/@identifier"/>
+		<xsl:variable name="equivalentSatAbb" select="$satAbb[
+			a:properties/a:property[
+				@propertyDefinitionRef = $satDoc/a:model/a:propertyDefinitions/a:propertyDefinition[a:name = 'dct:type']/@identifier
+				]/a:value = $abbImplementeBySbb
+			]"/>
+		<xsl:variable name="result" select="let $equivalentSatAbbIdentifier := $equivalentSatAbb/@identifier return (
+			exists(
+				$satDoc/a:model/a:relationships/a:relationship[@target = $equivalentSatAbbIdentifier and @source = $equivalentSatPrincipleIdentifier]
+			) or 
+			not(exists($sbbRelatedToInput))
+			)"/>
+		<xsl:sequence select="$result"/>
     </xsl:function>
 
     <xsl:function name="local:lackOfPrincipleIsExplained" as="xs:boolean">

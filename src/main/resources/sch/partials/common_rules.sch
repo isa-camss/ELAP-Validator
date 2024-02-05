@@ -10,7 +10,8 @@
          <sch:assert id="ELAP-003" flag="fatal" test="exists(local:findNonHierarchicalLinkedElements(.)) or local:lackOfPrincipleIsExplained(.)">[ELAP-003] '<sch:value-of select="./a:name"/>' must be associated with at least one element in the model, not being a 'principle'. If the principle is not used, associate it to a note (Archi  “note” element).</sch:assert>
          <!-- Specific implementation Solution: In solutions, APs MUST be linked to Interoperability Specifications through a realisation relation
          -->
-         <sch:assert id="ELAP-005" flag="warning" test="local:findSbbRelatedToPrinciple(.)">[ELAP-005] Architecture principle '<sch:value-of select="./a:name"/>' must be modelled and related to the correct SBBs (currently are: <sch:value-of select="local:extractSbbRelatedToPrinciple(.)"/>) through the correct ABB(s): <sch:value-of select="local:abbFromPrinciple(.)"/>.</sch:assert>
+
+         <sch:assert id="ELAP-005" flag="warning" test="local:findSbbRelatedToPrinciple(.)">[ELAP-005] Architecture principle '<sch:value-of select="./a:name"/>' must be modelled and related to the correct SBBs through the correct ABB. Any of the following ABBs can be related to this principle: <sch:value-of select="local:abbFromPrinciple(.)"/>.</sch:assert>
       </sch:rule>
    </sch:pattern>
 </sch:schema>
